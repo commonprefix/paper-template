@@ -1,0 +1,17 @@
+\section{Supplementary Information}
+\subsection{Adding Batch Verification Support}
+The current ECVRF implementation in the fastcrypto library does not support batch verification. Batch verification can improve the efficiency of verifying multiple VRF proofs simultaneously. The batchable VRF proofs, as described in the paper by Badertscher et al.\cite{batch-ecvrf}, replaces the c component of the VRF proof with U,V as calculated by the prover. The verifier then derives c from the challenge generation function and checks two verification equations (as opposed to deriving two values U,V). By shifting the terms of the equations so they sum to zero, we can randomise them so that we only need to perform one (very long) multi-multiplication (and some field operations). These optimizations can also be combined with the variant multi-multiplication functions provided by Dalek. The main practical cost to this approach is that U,V are 32 bytes each instead of 16 bytes for c.
+
+We recommend exploring the addition of batch verification support to the ECVRF implementation in the fastcrypto library, following the approach described in the referenced paper. This could enhance the efficiency and performance of the library, particularly when verifying multiple VRF proofs at once.
+
+\subsection{Secret Scalar and Nonce Derivation}
+The ECVRF standard provides two separate notions of a prover’s secret: the secret key SK and the secret scalar x. In general, the secret key is used in two places: first, to derive the public key and second to derive a prefix used in the nonce generation for proofs.
+
+Suites deriving from P-256 have a simple structure, where the key, the scalar and the prefix are the same value (modulo representation of the secret as a bytestring for the prefix). Suites deriving from P256 use 5.4.2.1 to derive nonces.
+
+Suites deriving from ed25519 have a more complex structure, where the key is a bytestring hashed into a 64 byte string, half of which is used to derive the secret scalar and half of which is used to derive the nonce as per 5.4.2.2.
+
+The current implementation uses the P-256 design for the secret scalar and the ed25519 design for the nonce. This does not directly contradict the guidance in the spec as the hLen requirement of 64 mentioned in sect 5.4.2.2. is met. We do not believe there exists an issue with this design choice: domain separation is not impacted and the contribution of the secret key to the nonce is similar. 
+
+Note that it seems that aligning fully with either is messy: either we need the more complex HMAC design from P-256 or we get the slightly messy scalar derivation from ed25519 which we don’t fully need: part of it clears the cofactor which we don’t have, so we’d still have to shift things around.
+

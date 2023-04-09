@@ -1,24 +1,44 @@
 \section{Overview}
 \subsection{Introduction}
+Mysten Labs commissioned Common Prefix to audit the Elliptic Curve Verifiable Random Function (ECVRF) and Ristretto255 implementations within their fastcrypto library. The primary objectives of the audit were to assess the security, adherence to the relevant RFC, performance optimization, and code quality improvement of these particular implementations. \href{https://github.com/MystenLabs/fastcrypto}{Fastcrypto} is a Rust-based library that implements selected cryptographic primitives and also serves as a wrapper for several carefully chosen cryptography crates, ensuring optimal performance and security for Mysten Labs' software solutions, including their blockchain platform, Sui.
+
+Verifiable Random Functions (VRFs) can be used to provide trustless randomness in blockchain protocols\cite{praos,algorand}. Elliptic Curve VRFs (ECVRFs) employs the elliptic curve Diffie-Hellman assumption for the security of the VRF\cite{vrf}. The fastcrypto ECVRF implementation follows the \href{https://datatracker.ietf.org/doc/draft-irtf-cfrg-vrf/}{draft-irtf-cfrg-vrf-15} RFC\cite{vrf-rfc}, except for its usage of the Ristretto255 curve. This deviation is due to the Ristretto technique, which offers advantages, such as constructing prime-order elliptic
+curve groups with non-malleable encodings, resulting in improved security properties\cite{ristretto255-rfc}. The Ristretto255 implementation is a wrapper around the \href{https://github.com/zkcrypto/curve25519-dalek-ng}{curve25519-dalek-ng} implementation which follows the \href{https://datatracker.ietf.org/doc/draft-irtf-cfrg-ristretto255-decaf448/}{draft-irtf-cfrg-ristretto255-decaf448-07} RFC\cite{ristretto255-rfc}.By leveraging Ristretto255, Mysten Labs seeks to strengthen the ECVRF implementation while maintaining close compatibility with the RFC. The company plans to utilize the fastcrypto ECVRF implementation to provide a reliable source of randomness for both the consensus and execution layers of their Sui platform.
+
+This audit report comprehensively evaluates the ECVRF and Ristretto255 implementations within the fastcrypto library. The findings are categorized by severity, accompanied by proposed solutions for each identified issue. It should be noted that the scope of this audit was limited to the ECVRF and Ristretto255 implementations and did not extend to the library's dependencies or other components. We aim to ensure that Mysten Labs' cryptographic implementations adhere to the highest security, efficiency, and reliability standards.
+
+\subsection{Audited Files} 
+\begin{enumerate}
+    \item{\href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs}{[963205c6] vrf.rs}}
+    \item{\href{https://github.com/MystenLabs/fastcrypto/blob/main/fastcrypto/src/groups/ristretto255.rs}{[963205c6] ristretto255.rs}}
+\end{enumerate}
+
 \subsection{Disclaimer}
 This audit does not give any warranties on the bug-free status of the given code, i.e., the evaluation result does not guarantee the nonexistence of any further findings of security issues. This audit report is intended to be used for discussion purposes only. We always recommend proceeding with several independent audits and a public bug bounty program to ensure the security of the project.
+
 \subsection{Executive Summary}
-\subsection{Security Opinion \& Code Quality}
+Overall the implementation of the ECVRF using the Ristretto255 is of very high quality, closely following the RFC guidelines and adhering to Rust's best practices.
+
+No security-critical issues were identified during the audit process. However, minor deviations from the RFC specification were observed, such as the \lstinline{ecvrf_encode_to_curve} function hashing twice instead of once as required by the RFC, the \lstinline{verify_output} function not being entirely in line with the RFC, and a discrepancy in Ristretto scalar deserialization, which differs from the upstream implementation, leading to multiple representations for elements that should be unique.
+
+Performance optimization suggestions presented in the report resulted in a significant speedup of approximately 27\% on the verification benchmark using cached pre-computation and variable time multi-multiplications. It should be noted that the Ristretto255 implementation leverages the \href{https://github.com/zkcrypto/curve25519-dalek-ng}{curve25519-dalek-ng} crate, which is forked from \href{https://github.com/dalek-cryptography/curve25519-dalek}{curve25519-dalek}. The curve25519-dalek-ng crate is currently 214 commits behind the original repository, potentially missing critical security fixes present in the original repo.
+
+In summary, the fastcrypto ECVRF and Ristretto255 implementations have been found to be of high quality, with only minor issues which can be addressed easily.
+
 \subsection{Findings Severity Breakdown}
 The findings are classified under the following severity categories according to the impact and the likelihood of an attack.
-
 \begin{center}
-\begin{tabular}{||c p{9cm}||} 
+\begin{tabular}{|| c | p{9cm}||} 
  \hline
  Level & Description \\ [0.5ex] 
  \hline\hline
- \textcolor{red}{High} & Logical errors or implementation bugs that are easily exploited. In case of contracts such issues can lead to any kind of loss of funds.\\
+ High & Logical errors or implementation bugs that are easily exploited. In case of contracts such issues can lead to any kind of loss of funds.\\
  \hline
- \textcolor{purple}{Medium} & Issues that may break the intended logic, is a deviation from the specification or can lead to DoS attacks.\\
+ Medium & Issues that may break the intended logic, is a deviation from the specification or can lead to DoS attacks.\\
  \hline
- \textcolor{blue}{Low} & Issues harder to exploit (exploitable with low probability), issues that lead to poor performance, clumsy logic or seriously error-prone implementation.\\
+ Low & Issues harder to exploit (exploitable with low probability), issues that lead to poor performance, clumsy logic or seriously error-prone implementation.\\
  \hline
- \textcolor{green}{Informational} & Advisory comments and recommendations that could help make the codebase clearer, more readable and easier to maintain.\\
+ Informational & Advisory comments and recommendations that could help make the codebase clearer, more readable and easier to maintain.\\
  \hline
 \end{tabular}
 \end{center}
