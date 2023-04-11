@@ -13,5 +13,5 @@ Suites deriving from ed25519 have a more complex structure, where the key is a b
 
 The current implementation uses the P-256 design for the secret scalar and the ed25519 design for the nonce. This does not directly contradict the guidance in the spec as the hLen requirement of 64 mentioned in sect 5.4.2.2. is met. We do not believe there exists an issue with this design choice: domain separation is not impacted and the contribution of the secret key to the nonce is similar. 
 
-Note that it seems that aligning fully with either is messy: either we need the more complex HMAC design from P-256 or we get the slightly messy scalar derivation from ed25519 which we don’t fully need: part of it clears the cofactor which we don’t have, so we’d still have to shift things around.
+Note that it seems that aligning fully with either is messy: either we need the more complex HMAC design from P-256 or we get the slightly messy scalar derivation from ed25519 which we don’t fully need: part of it clears the cofactor which we don’t have, so wer'd still have to shift things around.
 

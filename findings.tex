@@ -6,7 +6,7 @@
 \subsubsection*{M01: Extra hashing in \lstinline{ecvrf_encode_to_curve}}
 \begin{itemize}[align=left]
     \item[\textbf{Affected Code:}] \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs#L99}{fastcrypto/src/vrf.rs (line 99)}
-    \item[\textbf{Summary:}] In the \lstinline{ecvrf_encode_to_curve} implementation, the \lstinline{expand_message} function applies the hash once before returning the expanded message. Additionally, the \lstinline{map_to_point} function applies the hash once again before calling the function \lstinline{from_uniform_bytes}. However, the \href{https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-16#name-hashing-to-ristretto255}{Hash-to-Curve RFC Appendix B} only hashes once before calling the \lstinline{from_uniform_bytes} function. This does not lead to any security issues but is a deviation from the specification and has negative performance implications.
+    \item[\textbf{Summary:}] In the \lstinline{ecvrf_encode_to_curve} implementation, the \lstinline{expand_message} function applies the hash once before returning the expanded message. Additionally, the \lstinline{map_to_point} function applies the hash once again before calling the function \lstinline{from_uniform_bytes}. However, the \href{https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-16#name-hashing-to-ristretto255}{Hash-to-Curve RFC Appendix B} only hashes once before calling the \lstinline{from_uniform_bytes} function. This does not lead to security issues but is a deviation from the specification and has negative performance implications.
     \item[\textbf{Suggestion:}] We recommend using \lstinline{from_uniform_bytes} directly in the \lstinline{ecvrf_encode_to_curve} to avoid the additional hashing and potential compatibility issues with other designs.
     \item[\textbf{Suggested Fix:}] \href{https://github.com/MystenLabs/fastcrypto/pull/543/commits/370694eeffed74a57c816758d472640e4011ae7e}{[370694]}
     \item[\textbf{Status:}] Open
@@ -15,7 +15,7 @@
 \subsubsection*{M-02: Non-canonical ristretto scalar deserialization}
 \begin{itemize}[align=left]
 \item[\textbf{Affected Code:}] \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/groups/ristretto255.rs#L191}{fastcrypto/src/groups/ristretto255.rs (line 191)}
-\item[\textbf{Summary:}] The ristretto scalar deserialization differs from the one upstream in that it does not enforce the value to be canonical (i.e that the input is already reduced). In the context of ECVRF this is not dangerous as the s,c components of a proof should *not* be assumed unique in any case. Proofs following the spec for nonce derivation are deterministic but this cannot be checked or enforced by the verifier: an alternative prover can derive k via other means with no clear avenue for detection. In general use however it can enable multiple representations for elements that should be unique, making replay attack detection harder.
+\item[\textbf{Summary:}] The ristretto scalar deserialization differs from the one upstream such that it does not enforce the value to be canonical (i.e., that the input is already reduced). In the context of ECVRF, this is not dangerous as the s and c components of the proof should *not* be assumed unique. Proofs following the spec for nonce derivation are deterministic, but this cannot be checked or enforced by the verifier: an alternative prover can derive k via other means with no clear avenue for detection. In general use, however, it can enable multiple representations for elements that should be unique, making replay attack detection harder.
 \item[\textbf{Suggestion:}] Consider updating the ristretto scalar deserialization to use upstream \lstinline{from_canonical_bytes function}.
 \item[\textbf{Suggested Fix:}] \href{https://github.com/MystenLabs/fastcrypto/pull/543/commits/ebcd7e1c8e6f0bbf48667f995017151a20289886}{[ebcd7e1c]}
 \item[\textbf{Status:}] Open
@@ -25,8 +25,8 @@
 \subsubsection*{L-01: Consider removing \lstinline{verify_output} and bring \lstinline{verify} inline with the RFC}
 \begin{itemize}[align=left]
     \item[\textbf{Affected Code:}] \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs#L45}{fastcrypto/src/vrf.rs (line 45)}
-    \item[\textbf{Summary:}] The \lstinline{verify_output} function allows the verification of an output given a proof, public key, input, and output. This function is not present in the RFC standard and its usage could lead to potential pitfalls. The function requires the purported output of the VRF as an input. There are two ways one can get the output: either by fetching it from someone or generating it locally by hashing the proof. The first scenario is a waste of bandwidth, as the output
-    can be generated using the proof locally anyway. In the second scenario, we are generating the output twice: firstly to provide it as an input to the function, and, secondly, inside the \lstinline{verify_output} itself. Removing the \lstinline{verify_output} function would harden the implementation, as its use case is unclear. Additionally, the current \lstinline{verify} function returns a boolean, while the RFC specification returns False or (True, Output).
+    \item[\textbf{Summary:}] The \lstinline{verify_output} function allows the verification of output given a proof, public key, input, and output. This function is not present in the RFC standard, and its usage could lead to potential pitfalls. The function requires the purported output of the VRF as an input. One can get the output in two ways: fetching it from someone or generating it locally by hashing the proof. The first scenario wastes bandwidth, as the output
+    can be locally generated using the proof. In the second scenario, we generate the output twice: firstly, to provide it as an input to the function, and, secondly, inside the \lstinline{verify_output} itself. Removing the \lstinline{verify_output} function would harden the implementation, as its use case is unclear. Additionally, the current \lstinline{verify} function returns a boolean, while the RFC specification returns False or (True, Output).
     \item[\textbf{Suggestion:}] Consider removing the \lstinline{verify_output} function and modify the \lstinline{verify} function to align with the RFC specification, returning False or (True, Output). This will help prevent potential issues for downstream developers.
     \item[\textbf{Status:}] Open
 \end{itemize}
@@ -38,7 +38,7 @@
 \item \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs#L248}{fastcrypto/src/vrf.rs (line 248)}
 \item \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs#L252}{fastcrypto/src/vrf.rs (line 252)}
 \end{itemize}
-\item[\textbf{Summary:}] Multiscalar multiplication takes the highest amount of time during verification. The current implementation uses \lstinline{RistrettoPoint::multiscalar_mul} which ensures a constant runtime to avoid leaking any information. However, the upstream \lstinline{RistrettoPoint} also allows for \lstinline{vartime_multiscalar_mul}, which is faster but does not run in constant time. \lstinline{vartime_multiscalar_mul} can be used for the verification side, where there is no private information that can be leaked.
+\item[\textbf{Summary:}] Multiscalar multiplication takes the most time during verification. The current implementation uses \lstinline{RistrettoPoint::multiscalar_mul} to ensure a constant runtime to avoid leaking information. However, the upstream \lstinline{RistrettoPoint} also allows for \lstinline{vartime_multiscalar_mul}, which is faster but does not run in constant time. \lstinline{vartime_multiscalar_mul} can be used for the verification side, where no private information can be leaked.
 \item[\textbf{Suggestion:}] Consider using \lstinline{vartime_multiscalar_mul} for the verification side to improve performance without risking the leakage of private information.
 \item[\textbf{Suggested Fix:}] \href{https://github.com/MystenLabs/fastcrypto/pull/543/commits/53e16c8f82d63a84cdc842d93fc5c26cebbe109b}{[53e16c]}
 \item[\textbf{Status:}] Open
@@ -53,7 +53,7 @@
 \item \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs#L88}{fastcrypto/src/vrf.rs (line 88)}
 \end{itemize}
 \item[\textbf{Summary:}] Currently, both \lstinline{SUITE_STRING} and \lstinline{DST} mention "sui". We understand that the fastcrypto library is primarily used for the Sui blockchain. We recommend using a more neutral identifier to encourage broader adoption of the implemented parameters.
-\item[\textbf{Suggestion:}] Change the \lstinline{SUITE_STRING} and \lstinline{DST} identifiers to a more neutral term, such as "fastcrypto", to promote standardization and wider adoption of the library.
+\item[\textbf{Suggestion:}] Change the \lstinline{SUITE_STRING} and \lstinline{DST} identifiers to a more neutral term, such as "fastcrypto," to promote standardization and wider adoption of the library.
 \item[\textbf{Status:}] Open
 \end{itemize}
 
@@ -65,7 +65,7 @@
 \item \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs#L137}{fastcrypto/src/vrf.rs (line 137)}
 \item \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs#L141}{fastcrypto/src/vrf.rs (line 141)}
 \end{itemize}
-\item[\textbf{Summary:}] Some parts of the code use the reference type H of SHA512, while others directly use SHA512. It is recommended to use the reference type H consistently throughout the code.
+\item[\textbf{Summary:}] Some parts of the code use the reference type H for SHA512, while others directly use SHA512. It is recommended to use the reference type H consistently throughout the code.
 \item[\textbf{Suggestion:}] Modify the code to consistently use the reference type H of SHA512, ensuring uniformity and improved maintainability.
 \item[\textbf{Suggested Fix:}] \href{https://github.com/MystenLabs/fastcrypto/pull/543/commits/d8edc92340dd957f4bd05c356379be7ffa0916a5}{[d8edc923]}
 \item[\textbf{Status:}] Open
@@ -90,7 +90,7 @@
 \subsubsection*{I-05: Store compressed state of ECVRFPublicKey to optimize challenge generation}
 \begin{itemize}[align=left]
 \item[\textbf{Affected Code:}] \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs#L91}{fastcrypto/src/vrf.rs (line 91)}
-\item[\textbf{Summary:}] The current implementation of \lstinline{ECVRFPublicKey} does not store its compressed state, leading to potential recalculation of the compressed form during challenge generation. This can be optimized by storing the compressed state of the \lstinline{ECVRFPublicKey} in memory.
+\item[\textbf{Summary:}] The current implementation of \lstinline{ECVRFPublicKey} does not store its compressed state, leading to potential recalculations of the compressed form during challenge generation. This can be optimized by storing the compressed state of the \lstinline{ECVRFPublicKey} in memory.
 \item[\textbf{Suggestion:}] Modify the \lstinline{ECVRFPublicKey} structure to include a field for the compressed representation. Update the serialization and deserialization methods to work with the new structure. This would allow for a more efficient challenge generation process by reusing the stored compressed state instead of recalculating it.
 \item[\textbf{Suggested Fix:}] \href{https://github.com/MystenLabs/fastcrypto/pull/543/commits/a5bd0a335c4120fb05db801895a778905aaffcac}{[a5bd0a]}
 \item[\textbf{Status:}] Open
@@ -100,7 +100,7 @@
 \begin{itemize}[align=left]
 \item[\textbf{Affected Code:}] \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs}{fastcrypto/src/vrf.rs}
 \item[\textbf{Summary:}] Parts of multiscalar multiplication during the verification can be cached to improve the performance of the ECVRF verification process.
-\item[\textbf{Suggestion:}] Introduce a \lstinline{challenge_cache} field in the \lstinline{ECVRFPublicKey} structure and use \lstinline{VartimeRistrettoPrecomputation} to precompute the multiscalar multiplication between generator and public key. 
+\item[\textbf{Suggestion:}] Introduce a \lstinline{challenge_cache} field in the \lstinline{ECVRFPublicKey} structure and use \lstinline{VartimeRistrettoPrecomputation} to precompute the multiscalar multiplication between the generator and the public key. 
 \item[\textbf{Suggested Fix:}] \href{https://github.com/MystenLabs/fastcrypto/pull/543/commits/0c05200998a89fc177a26a8b9d4254bd0e0070de}{[0c0520]} (needs more work)
 \item[\textbf{Status:}] Open
 \end{itemize}
