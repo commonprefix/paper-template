@@ -78,9 +78,29 @@
     \item[\textbf{Status:}] Open
 \end{itemize}
 
-\subsubsection*{I-03: Adding Batch Verification Support}
+\subsubsection*{I-04: Optimize challenge generation by caching hash state}
 \begin{itemize}[align=left]
-    \item[\textbf{Summary:}] The current ECVRF implementation in the fastcrypto library does not support batch verification. Batch verification can improve the efficiency of verifying multiple VRF proofs simultaneously. The batchable VRF proofs, as described in the paper by Badertscher et al.\cite{batch-ecvrf} (\href{https://eprint.iacr.org/2022/1045}{https://eprint.iacr.org/2022/1045}), replaces the c component of the VRF proof with U,V as calculated by the prover. The verifier then derives c from the challenge generation function and checks two verification equations (as opposed to deriving two values U,V). By shifting the terms of the equations so they sum to zero, we can randomise them so that we only need to perform one (very long) multi-multiplication (and some field operations). These optimizations can also be combined with the variant multi-multiplication functions provided by Dalek. The main practical cost to this approach is that U,V are 32 bytes each instead of 16 bytes for c.
-    \item[\textbf{Suggestion:}] We recommend exploring the addition of batch verification support to the ECVRF implementation in the fastcrypto library, following the approach described in the referenced paper. This could enhance the efficiency and performance of the library, particularly when verifying multiple VRF proofs at once.
-    \item[\textbf{Status:}] Open
+\item[\textbf{Affected Code:}] \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs#L157}{fastcrypto/src/vrf.rs (line 157)}
+\item[\textbf{Summary:}] The current implementation of \lstinline{ecvrf_challenge_generation} initializes and updates the hash with the constant \lstinline{SUITE_STRING} every time it is called. This can be optimized by caching the initial hash state to avoid redundant hashing of the constant \lstinline{SUITE_STRING}.
+\item[\textbf{Suggestion:}] Introduce a cached hash state using \lstinline{Lazy} to store the initial state of the hash with the \lstinline{SUITE_STRING} already hashed. This would allow reusing the cached state and avoid the unnecessary hashing of \lstinline{SUITE_STRING} for each invocation of \lstinline{ecvrf_challenge_generation}.
+\item[\textbf{Suggested Fix:}] \href{https://github.com/MystenLabs/fastcrypto/pull/543/commits/ae62e9bdb527574974a34413ef540d3f29d38d87}{[ae62e9]}
+\item[\textbf{Status:}] Open
+\end{itemize}
+
+\subsubsection*{I-05: Store compressed state of ECVRFPublicKey to optimize challenge generation}
+\begin{itemize}[align=left]
+\item[\textbf{Affected Code:}] \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs#L91}{fastcrypto/src/vrf.rs (line 91)}
+\item[\textbf{Summary:}] The current implementation of \lstinline{ECVRFPublicKey} does not store its compressed state, leading to potential recalculation of the compressed form during challenge generation. This can be optimized by storing the compressed state of the \lstinline{ECVRFPublicKey} in memory.
+\item[\textbf{Suggestion:}] Modify the \lstinline{ECVRFPublicKey} structure to include a field for the compressed representation. Update the serialization and deserialization methods to work with the new structure. This would allow for a more efficient challenge generation process by reusing the stored compressed state instead of recalculating it.
+\item[\textbf{Suggested Fix:}] \href{https://github.com/MystenLabs/fastcrypto/pull/543/commits/a5bd0a335c4120fb05db801895a778905aaffcac}{[a5bd0a]}
+\item[\textbf{Status:}] Open
+\end{itemize}
+
+\subsubsection*{I-06: Precompute multiscalar multiplication using VartimeRistrettoPrecomputation}
+\begin{itemize}[align=left]
+\item[\textbf{Affected Code:}] \href{https://github.com/MystenLabs/fastcrypto/blob/963205c6d0538fe548b8b10037cf87a53af6f424/fastcrypto/src/vrf.rs}{fastcrypto/src/vrf.rs}
+\item[\textbf{Summary:}] Parts of multiscalar multiplication during the verification can be cached to improve the performance of the ECVRF verification process.
+\item[\textbf{Suggestion:}] Introduce a \lstinline{challenge_cache} field in the \lstinline{ECVRFPublicKey} structure and use \lstinline{VartimeRistrettoPrecomputation} to precompute the multiscalar multiplication between generator and public key. 
+\item[\textbf{Suggested Fix:}] \href{https://github.com/MystenLabs/fastcrypto/pull/543/commits/0c05200998a89fc177a26a8b9d4254bd0e0070de}{[0c0520]} (needs more work)
+\item[\textbf{Status:}] Open
 \end{itemize}
